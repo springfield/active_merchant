@@ -1543,7 +1543,7 @@ module ActiveMerchant #:nodoc:
         url = test? ? test_url : live_url
         
         begin
-          puts "SOAP REQUEST"
+          #puts "SOAP REQUEST"
           pp request
           soap = ssl_post(url, request, "Content-Type" => "text/xml")
         rescue ActiveMerchant::ResponseError => error
@@ -1551,7 +1551,7 @@ module ActiveMerchant #:nodoc:
         end
         
         response = build_response(action, soap)
-        puts "SOAP RESPONSE"
+        #puts "SOAP RESPONSE"
         pp response
         response
       end
