@@ -1109,18 +1109,17 @@ module ActiveMerchant #:nodoc:
             fields[soap_field] = encode(options[key], encoder) if options.has_key?(key)
           end
           
-          # CustomData - NOT IMPLEMENTED!
+          # TODO: CustomData - NOT IMPLEMENTED!
           
           fields['CheckFormat'] = options[:check_format]  if options[:check_format]
           fields['RecordType']  = options[:record_type]   if options[:check_format]
           
-          case payment_method = options[:payment_method]
-          when payment_method.kind_of?(ActiveMerchant::Billing::CreditCard)
-            fields['CardNumber']  = payment_method.number
-            fields['CardExp']     = "#{"%02d" % payment_method[:method].month}#{payment_method[:method].year}"
-          when payment_method.kind_of?(ActiveMerchant::Billing::Check)
-            fields['Account']     = payment_method.number
-            fields['Routing']     = payment_method.routing_number
+          if (credit_card = options[:credit_card]).kind_of?(ActiveMerchant::Billing::CreditCard)
+            fields['CardNumber']  = credit_card.number
+            fields['CardExp']     = "#{"%02d" % credit_card.month}#{credit_card.year}"
+          elsif (check = options[:check]).kind_of?(ActiveMerchant::Billing::Check)
+            fields['Account']     = check.number
+            fields['Routing']     = check.routing_number
           end
           
           build_fields(soap, 'UpdateData', :fields => fields)
@@ -1360,11 +1359,10 @@ module ActiveMerchant #:nodoc:
       end
 
       def extract_methods_and_tag(options)
-        case
-        when options[:payment_method] && !options[:payment_methods]
+        if options[:payment_method] && !options[:payment_methods]
           payment_methods = [options[:payment_method]]
           tag_name = 'PaymentMethod'
-        when options[:payment_methods] && !options[:payment_method]
+        elsif options[:payment_methods] && !options[:payment_method]
           payment_methods = options[:payment_methods]
           tag_name = 'item'
         else
@@ -1375,8 +1373,7 @@ module ActiveMerchant #:nodoc:
       end
 
       def build_credit_card_or_check(soap, payment_method)
-        case
-        when payment_method[:method].kind_of?(ActiveMerchant::Billing::CreditCard)
+        if payment_method[:method].kind_of?(ActiveMerchant::Billing::CreditCard)
           build_tag soap, :string, 'CardNumber', payment_method[:method].number
           build_tag soap, :string, 'CardExpiration',
             "#{"%02d" % payment_method[:method].month}#{payment_method[:method].year}"
@@ -1385,7 +1382,7 @@ module ActiveMerchant #:nodoc:
             build_tag soap, :string, 'AvsZip', options[:billing_address][:zip]
           end
           build_tag soap, :string, 'CardCode', payment_method[:method].verification_value
-        when payment_method[:method].kind_of?(ActiveMerchant::Billing::Check)
+        elsif payment_method[:method].kind_of?(ActiveMerchant::Billing::Check)
           build_tag soap, :string, 'Account', payment_method[:method].number
           build_tag soap, :string, 'Routing', payment_method[:method].routing_number
           build_tag soap, :string, 'AccountType', payment_method[:method].account_type.capitalize
@@ -1426,11 +1423,10 @@ module ActiveMerchant #:nodoc:
           TRANSACTION_REQUEST_OBJECT_OPTIONS.each do |key, (soap_type, soap_field)|
             build_tag soap, soap_type, soap_field, options[key]
           end
-          case
-          when options[:payment_method] == nil
-          when options[:payment_method].kind_of?(ActiveMerchant::Billing::CreditCard)
+          if options[:payment_method] == nil
+          elsif options[:payment_method].kind_of?(ActiveMerchant::Billing::CreditCard)
             build_credit_card_data soap, options
-          when options[:payment_method].kind_of?(ActiveMerchant::Billing::Check)
+          elsif options[:payment_method].kind_of?(ActiveMerchant::Billing::Check)
             build_check_data soap, options
           else
             raise ArgumentError, 'options[:payment_method] must be a CreditCard or Check'
