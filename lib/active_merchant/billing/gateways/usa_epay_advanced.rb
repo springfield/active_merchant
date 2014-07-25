@@ -82,13 +82,6 @@ module ActiveMerchant #:nodoc:
         :notes => [:string, 'Notes'],
         :data => [:string, 'CustomData'],
         :url => [:string, 'URL'],
-        # Recurring Billing
-        #:enabled => [:boolean, 'Enabled'],
-        #:schedule => [:string, 'Schedule'],
-        #:number_left => [:integer, 'NumLeft'],
-        #:amount => [:double, 'Amount'],
-        #:tax => [:double, 'Tax'],
-        #:currency => [:string, 'Currency'],
         :description => [:string, 'Description'],
         :order_id => [:string, 'OrderID'],
         :user => [:string, 'User'],
@@ -100,7 +93,7 @@ module ActiveMerchant #:nodoc:
         :tax_class => [:string, 'TaxClass'],
         :lookup_code => [:string, 'LookupCode']
       } #:nodoc:
-      
+
       ADDRESS_OPTIONS = {
         :first_name => [:string, 'FirstName'],
         :last_name => [:string, 'LastName'],
@@ -162,8 +155,6 @@ module ActiveMerchant #:nodoc:
         :amount => [:double, 'Amount'],
         :tax => [:double, 'Tax'],
         :tip => [:double, 'Tip'],
-        # :non_tax is not a number and is already specified in TRANSACTION_DETAIL_OPTIONS
-        #:non_tax => [:boolean, 'NonTax'],
         :shipping => [:double, 'Shipping'],
         :discount => [:double, 'Discount'],
         :subtotal => [:double, 'Subtotal']
@@ -303,7 +294,7 @@ module ActiveMerchant #:nodoc:
         deprecated CREDIT_DEPRECATION_MESSAGE
         refund(money, identification, options)
       end
-      
+
       BILLING_SCHEDULES = {
         :daily      => 'daily',
         :weekly     => 'weekly',
@@ -314,13 +305,13 @@ module ActiveMerchant #:nodoc:
         :biannually => 'bi-annually',
         :annually   => 'annually'
       }
-      
+
       # -1 indicates that there is no limit to subscription
       UNLIMITED_RECURRING_BILLINGS = -1
-      
+
       # Send a purchase request with periodic options
       # Recurring Options (see CUSTOMER_OPTIONS hash)
-      # 
+      #
       # :schedule  =>
       #   :daily
       #   :weekly
@@ -333,15 +324,15 @@ module ActiveMerchant #:nodoc:
       #
       def recurring_billing(options={})
         requires!(options, :customer_number, :enabled)
-        
+
         if options[:enabled]
           requires!(options, [:schedule, RECURRING_BILLING_CYCLES].flatten)
           options = options.merge(:schedule => BILLING_SCHEDULES[options[:schedule]])
         end
-        
+
         quick_update_customer(options)
       end
-      
+
       # Customer ======================================================
 
       # Add a customer.
@@ -408,7 +399,7 @@ module ActiveMerchant #:nodoc:
         request = build_request(__method__, options)
         commit(__method__, request)
       end
-      
+
       # Get a customer's history.
       #
       def get_customer_history(options={})
@@ -417,8 +408,8 @@ module ActiveMerchant #:nodoc:
         request = build_request(__method__, options)
         commit(__method__, request)
       end
-      
-      # Update a customer by replacing some of the customer details (quickUpdateCustomer). 
+
+      # Update a customer by replacing some of the customer details (quickUpdateCustomer).
       # Mainly for updating recurring payment info.
       #
       # ==== Options
@@ -1068,7 +1059,6 @@ module ActiveMerchant #:nodoc:
         soap.tag! "ns1:addCustomer" do |soap|
           build_token soap, options
           build_customer_data soap, options
-          #build_tag soap, :double, 'Tax', amount(options[:tax])
         end
       end
 
@@ -1099,30 +1089,29 @@ module ActiveMerchant #:nodoc:
       end
 
       def build_quick_update_customer(soap, options)
-        #build_customer(soap, options, 'quickUpdateCustomer', :quick)
         soap.tag! "ns1:quickUpdateCustomer" do |soap|
           build_token soap, options
           build_tag soap, :integer, 'CustNum', options[:customer_number]
-          
+
           fields = options[:fields] ||= {}
-          
+
           ADDRESS_OPTIONS.each do |key, (soap_type, soap_field)|
             fields[soap_field] = options[key] if options.has_key?(key)
           end
-          
+
           CUSTOMER_OPTIONS.each do |key, (soap_type, soap_field)|
             fields[soap_field] = options[key] if options.has_key?(key)
           end
-          
+
           RECURRING_BILLING_OPTIONS.each do |key, (soap_type, soap_field, encoder)|
             fields[soap_field] = encode(options[key], encoder) if options.has_key?(key)
           end
-          
+
           # TODO: CustomData - NOT IMPLEMENTED!
-          
+
           fields['CheckFormat'] = options[:check_format]  if options[:check_format]
           fields['RecordType']  = options[:record_type]   if options[:check_format]
-          
+
           if (credit_card = options[:credit_card]).kind_of?(ActiveMerchant::Billing::CreditCard)
             fields['CardNumber']  = credit_card.number
             fields['CardExp']     = "#{"%02d" % credit_card.month}#{credit_card.year}"
@@ -1130,7 +1119,7 @@ module ActiveMerchant #:nodoc:
             fields['Account']     = check.account_number
             fields['Routing']     = check.routing_number
           end
-          
+
           build_fields(soap, 'UpdateData', :fields => fields)
         end
       end
@@ -1348,12 +1337,12 @@ module ActiveMerchant #:nodoc:
           CUSTOMER_OPTIONS.each do |key, (soap_type, soap_field)|
             build_tag soap, soap_type, soap_field, options[key] if options.has_key?(key)
           end
-          
+
           build_billing_address soap, options
           build_customer_payments soap, options
           build_custom_fields soap, options
           build_recurring_billing soap, options
-          
+
         end
       end
 
@@ -1445,13 +1434,13 @@ module ActiveMerchant #:nodoc:
           build_transaction_detail soap, options
           build_billing_address soap, options
           build_shipping_address soap, options
-          
+
           if recurring = options[:recurring]
             soap.RecurringBilling 'xsi:type' => "ns1:RecurringBilling" do |soap|
               build_recurring_billing soap, options[:recurring]
             end
           end
-          
+
           build_line_items soap, options
           build_custom_fields soap, options
         end
@@ -1505,10 +1494,6 @@ module ActiveMerchant #:nodoc:
       end
 
       def build_recurring_billing(soap, options)
-        # build_tag soap, :double, 'Amount', amount(options[:amount])
-        # build_tag soap, :double, 'Tax', amount(options[:tax])
-        # build_tag soap, :string, 'Next', options[:next].strftime("%Y-%m-%d") if options[:next]
-        # build_tag soap, :string, 'Expire', options[:expire].strftime("%Y-%m-%d") if options[:expire]
         RECURRING_BILLING_OPTIONS.each do |key, (soap_type, soap_field, encoder)|
           build_tag soap, soap_type, soap_field, encode(options[key], encoder) if options.has_key?(key)
         end
@@ -1560,19 +1545,14 @@ module ActiveMerchant #:nodoc:
 
       def commit(action, request)
         url = test? ? test_url : live_url
-        
+
         begin
-          # puts "SOAP REQUEST"
-          # pp request
           soap = ssl_post(url, request, "Content-Type" => "text/xml")
         rescue ActiveMerchant::ResponseError => error
           soap = error.response.body
         end
-        
-        response = build_response(action, soap)
-        # puts "SOAP RESPONSE"
-        # pp response
-        response
+
+        build_response(action, soap)
       end
 
       def build_response(action, soap)
@@ -1627,11 +1607,10 @@ module ActiveMerchant #:nodoc:
           end
         end
 
-        #"#{response.message['result']}: #{response.message['error']}"
         if success == false && message.respond_to?(:[]) && message.respond_to?(:has_key?) && message.has_key?('error')
           message = message.has_key?('result') ? "#{message['result']}: #{message['error']}" : message['error']
         end
-        
+
         [response, success, message, authorization, avs, cvv]
       end
 
@@ -1657,9 +1636,9 @@ module ActiveMerchant #:nodoc:
 
         response
       end
-      
+
       private
-      
+
       def encode(value, method)
         if method
           self.send(method.to_sym, value)
@@ -1667,7 +1646,7 @@ module ActiveMerchant #:nodoc:
           value
         end
       end
-      
+
       def date(value)
         value.strftime("%Y-%m-%d")
       end
