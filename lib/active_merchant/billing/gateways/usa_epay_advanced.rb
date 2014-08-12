@@ -64,8 +64,9 @@ module ActiveMerchant #:nodoc:
     class UsaEpayAdvancedGateway < Gateway
       API_VERSION = "1.4"
 
-      TEST_URL_BASE = 'https://sandbox.usaepay.com/soap/gate/' #:nodoc:
-      LIVE_URL_BASE = 'https://www.usaepay.com/soap/gate/' #:nodoc:
+      TEST_URL_BASE  = 'https://sandbox.usaepay.com/soap/gate/' #:nodoc:
+      LIVE_URL_BASE  = 'https://www.usaepay.com/soap/gate/' #:nodoc:
+      LIVE_URL_BASE2 = 'https://www-02.usaepay.com/soap/gate/'
 
       self.test_url = TEST_URL_BASE
       self.live_url = LIVE_URL_BASE
@@ -1548,6 +1549,13 @@ module ActiveMerchant #:nodoc:
 
         begin
           soap = ssl_post(url, request, "Content-Type" => "text/xml")
+        rescue ActiveMerchant::ConnectionError => error
+          if url.include?(LIVE_URL_BASE)
+            secondary_url = url.sub(LIVE_URL_BASE, LIVE_URL_BASE2)
+            soap = ssl_post(secondary_url, request, "Content-Type" => "text/xml")
+          else
+            raise error
+          end
         rescue ActiveMerchant::ResponseError => error
           soap = error.response.body
         end
