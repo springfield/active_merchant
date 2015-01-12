@@ -66,7 +66,9 @@ module ActiveMerchant #:nodoc:
 
       TEST_URL_BASE  = 'https://sandbox.usaepay.com/soap/gate/' #:nodoc:
       LIVE_URL_BASE  = 'https://www.usaepay.com/soap/gate/' #:nodoc:
+      LIVE_URL_BASE1 = 'https://www-01.usaepay.com/soap/gate/'
       LIVE_URL_BASE2 = 'https://www-02.usaepay.com/soap/gate/'
+      LIVE_URL_BASE3 = 'https://www-03.usaepay.com/soap/gate/'
 
       self.test_url = TEST_URL_BASE
       self.live_url = LIVE_URL_BASE
@@ -1551,10 +1553,19 @@ module ActiveMerchant #:nodoc:
           soap = ssl_post(url, request, "Content-Type" => "text/xml")
         rescue ActiveMerchant::ConnectionError => error
           if url.include?(LIVE_URL_BASE)
-            secondary_url = url.sub(LIVE_URL_BASE, LIVE_URL_BASE2)
-            soap = ssl_post(secondary_url, request, "Content-Type" => "text/xml")
+            url = url.sub(LIVE_URL_BASE, LIVE_URL_BASE1)
+            sleep 5
+            retry
+          elsif url.include?(LIVE_URL_BASE1)
+            url = url.sub(LIVE_URL_BASE1, LIVE_URL_BASE2)
+            sleep 5
+            retry
+          elsif url.include?(LIVE_URL_BASE2)
+            url = url.sub(LIVE_URL_BASE2, LIVE_URL_BASE3)
+            sleep 5
+            retry
           else
-            raise error
+            raise
           end
         rescue ActiveMerchant::ResponseError => error
           soap = error.response.body
